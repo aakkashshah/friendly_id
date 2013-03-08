@@ -129,6 +129,57 @@ class SlugGeneratorTest < MiniTest::Unit::TestCase
     end
   end
 
+  test "should correctly sequence slugs that uses single dashes as sequence separator" do
+    model_class = Class.new(ActiveRecord::Base) do
+      self.table_name = "journalists"
+      extend FriendlyId
+      friendly_id :name, :use => :slugged, :sequence_separator => '-'
+      validates_uniqueness_of :slug_en
+      def self.name
+        "Journalist"
+      end
+    end
+    transaction do
+      record1 = model_class.create! :name => "Peugeuot 206"
+      assert_equal "peugeuot-206", record1.slug
+      record2 = model_class.create! :name => "Peugeuot 206"
+      assert_equal "peugeuot-206-2", record2.slug
+    end
+  end
+
+  test "should correctly attempt defined slug conflict solving strategies" do
+    model_class = Class.new(ActiveRecord::Base) do
+      self.table_name = "articles"
+      extend FriendlyId
+      friendly_id :name, :use => :slugged
+      def self.name
+        "Article"
+      end
+
+      def resolve_slug_conflict(attempts)
+        case attempts
+          when 1
+            "#{name} attempt 1"
+          when 2
+            "#{name} attempt 2"
+          else
+            super
+        end
+      end
+    end
+    transaction do
+      record1 = model_class.create! :name => "Peugeuot 206"
+      assert_equal "peugeuot-206", record1.slug
+      record2 = model_class.create! :name => "Peugeuot 206"
+      assert_equal "peugeuot-206-attempt-1", record2.slug
+      record3 = model_class.create! :name => "Peugeuot 206"
+      assert_equal "peugeuot-206-attempt-2", record3.slug
+      record4 = model_class.create! :name => "Peugeuot 206"
+      assert_equal "peugeuot-206-attempt-2--2", record4.slug
+    end
+  end
+
+>>>>>>> deb655ca0811c9f419bd0492843ad654fc250f39
 end
 
 class SlugSeparatorTest < MiniTest::Unit::TestCase
